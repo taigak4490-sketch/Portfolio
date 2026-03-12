@@ -212,6 +212,16 @@ resource "aws_cognito_user_pool_client" "client" {
   name         = "hotel-app-client"
   user_pool_id = aws_cognito_user_pool.pool.id
 explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+# 有効期限を明示的に指定してエラーを回避
+  id_token_validity      = 60      # 60分
+  access_token_validity  = 60      # 60分
+  refresh_token_validity = 30      # 30日
+
+  token_validity_units {
+    id_token      = "minutes"
+    access_token  = "minutes"
+    refresh_token = "days"
+  }
 }
 
 # API Gateway と Cognito を紐付ける「鍵穴」の設定
