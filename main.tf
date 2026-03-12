@@ -97,3 +97,126 @@ resource "aws_iam_role_policy" "lambda_policy" {
     ]
   })
 }
+
+
+
+# Pythonファイルをzipに固める設定
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "lambda_function.py"
+  output_path = "lambda_function.zip"
+}
+
+resource "aws_lambda_function" "config_manager" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "hotel-config-manager"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.lambda_handler" # ファイル名.関数名
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  runtime          = "python3.9"
+
+  # プログラム内で使う変数を渡す
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.config_db.name
+      BUCKET_NAME = aws_s3_bucket.published_config.id
+    }
+  }
+}
+
+# APIの本体（名前を定義）
+resource "aws_api_gateway_rest_api" "hotel_api" {
+  name        = "HotelConfigAPI"
+  description = "API for Hotel Configuration Management"
+}
+
+# リソース（URLのパス /config の作成）
+resource "aws_api_gateway_resource" "config_res" {
+  rest_api_id = aws_api_gateway_rest_api.hotel_api.id
+  parent_id   = aws_api_gateway_rest_api.hotel_api.root_resource_id
+  path_part   = "config"
+}
+
+resource "aws_api_gateway_method" "config_post" {
+  rest_api_id   = aws_api_gateway_rest_api.hotel_api.id
+  resource_id   = aws_api_gateway_resource.config_res.id
+  http_method   = "POST"
+  
+  # ここを修正：認証を「NONE」から「COGNITO」に変更
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito_auth.id
+}
+
+# Lambdaとの統合（APIが呼ばれたらLambdaを叩く設定）
+resource "aws_api_gateway_integration" "lambda_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.hotel_api.id
+  resource_id             = aws_api_gateway_resource.config_res.id
+  http_method             = aws_api_gateway_method.config_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.config_manager.invoke_arn
+}
+
+# API GatewayがLambdaを呼び出すための「許可」設定
+resource "aws_lambda_permission" "apigw_lambda" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.config_manager.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.hotel_api.execution_arn}/*/*"
+}
+
+# デプロイ（APIをインターネット上に公開する）
+resource "aws_api_gateway_deployment" "hotel_api_deployment" {
+  depends_on = [aws_api_gateway_integration.lambda_integration]
+  rest_api_id = aws_api_gateway_rest_api.hotel_api.id
+
+  # 設定変更を検知して再デプロイされるようにする
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.config_res.id,
+      aws_api_gateway_method.config_post.id,
+      aws_api_gateway_integration.lambda_integration.id,
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ステージ（デプロイしたものを "prod" として公開）
+resource "aws_api_gateway_stage" "hotel_api_stage" {
+  deployment_id = aws_api_gateway_deployment.hotel_api_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.hotel_api.id
+  stage_name    = "prod"
+}
+
+# 出力されるURLの定義も修正
+output "base_url" {
+  value = "${aws_api_gateway_stage.hotel_api_stage.invoke_url}/config"
+}
+
+# ユーザーの器（ユーザープール）
+resource "aws_cognito_user_pool" "pool" {
+  name = "hotel-admin-pool"
+
+  # 自己署名（ユーザー登録）を許可するかなどの設定
+  admin_create_user_config {
+    allow_admin_create_user_only = true
+  }
+}
+
+# 接続用クライアント（アプリから繋ぐためのIDを発行）
+resource "aws_cognito_user_pool_client" "client" {
+  name         = "hotel-app-client"
+  user_pool_id = aws_cognito_user_pool.pool.id
+}
+
+# API Gateway と Cognito を紐付ける「鍵穴」の設定
+resource "aws_api_gateway_authorizer" "cognito_auth" {
+  name          = "CognitoAuthorizer"
+  type          = "COGNITO_USER_POOLS"
+  rest_api_id   = aws_api_gateway_rest_api.hotel_api.id
+  provider_arns = [aws_cognito_user_pool.pool.arn]
+}
