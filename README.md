@@ -33,7 +33,7 @@ graph LR
     style Storage fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
-参照元資料（画像左のconfigurationを基に作成しました。）
+参照元資料（画像左の1.configurationを基に作成しました。）
 <img width="1308" height="731" alt="image" src="https://github.com/user-attachments/assets/5aa38bbf-9315-4d10-a061-5b69bc3c4986" />
 URL：https://d1.awsstatic.com/architecture-diagrams/ArchitectureDiagrams/serverless-reservation-system-on-aws-ra.pdf
 
