@@ -4,7 +4,19 @@ AWS SAA（Solution Architect Associate）の知識を活かし、Terraformを用
 
 システム構成図
 
-(※構成図を作成したらここに差し込む)
+```mermaid
+graph TD
+    User[ユーザー/クライアント] --> Cognito[Amazon Cognito]
+    User -- 認証トークン付きリクエスト --> APIGW[API Gateway /config]
+    
+    subgraph AWS_Cloud
+        APIGW --> Lambda[Lambda: config-manager]
+        
+        subgraph Data_Layer
+            Lambda --> DDB[(DynamoDB: hotel-configuration)]
+            Lambda --> S3[S3: published-config]
+        end
+    end
 
 参照元資料
 <img width="1308" height="731" alt="image" src="https://github.com/user-attachments/assets/5aa38bbf-9315-4d10-a061-5b69bc3c4986" />
