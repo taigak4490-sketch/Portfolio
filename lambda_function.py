@@ -11,9 +11,15 @@ TABLE_NAME = os.environ['TABLE_NAME']
 BUCKET_NAME = os.environ['BUCKET_NAME']
 
 def lambda_handler(event, context):
-    # 1. データの受け取り (テスト時に渡すデータ)
-    config_id = event.get('ConfigId', 'default_001')
-    setting_value = event.get('SettingValue', 'Standard_Mode')
+    # --- 修正ポイント：API Gatewayからのbodyをパースする ---
+    body = {}
+    if 'body' in event and event['body']:
+        body = json.loads(event['body'])
+    
+    # bodyの中から値を取り出す。見つからない場合はデフォルト値
+    config_id = body.get('ConfigId', 'default_001')
+    setting_value = body.get('SettingValue', 'Standard_Mode')
+    # --------------------------------------------------
 
     # 2. DynamoDBへの保存
     table = dynamodb.Table(TABLE_NAME)
@@ -29,7 +35,7 @@ def lambda_handler(event, context):
     publish_data = {
         'id': config_id,
         'setting': setting_value,
-        'updated_at': '2026-03-12' # 実際はdatetime等を使う
+        'updated_at': '2026-03-12'
     }
     
     s3.put_object(

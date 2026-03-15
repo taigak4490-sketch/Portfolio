@@ -231,3 +231,7 @@ resource "aws_api_gateway_authorizer" "cognito_auth" {
   rest_api_id   = aws_api_gateway_rest_api.hotel_api.id
   provider_arns = [aws_cognito_user_pool.pool.arn]
 }
+
+output "client_id" {
+  value = aws_cognito_user_pool_client.client.id
+}
