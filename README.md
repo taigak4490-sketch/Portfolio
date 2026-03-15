@@ -5,18 +5,33 @@ AWS SAA（Solution Architect Associate）の知識を活かし、Terraformを用
 システム構成図
 
 ```mermaid
-graph TD
-    User[ユーザー/クライアント] --> Cognito[Amazon Cognito]
-    User -- 認証トークン付きリクエスト --> APIGW[API Gateway /config]
+graph LR
+    User(( ユーザー))
     
-    subgraph AWS_Cloud
-        APIGW --> Lambda[Lambda: config-manager]
-        
-        subgraph Data_Layer
-            Lambda --> DDB[(DynamoDB: hotel-configuration)]
-            Lambda --> S3[S3: published-config]
-        end
+    subgraph Auth_and_Inbound [認証・入口]
+        Cognito[ Amazon Cognito]
+        APIGW[ API Gateway<br/>/config]
     end
+
+    subgraph Compute [ロジック]
+        Lambda[AWS Lambda<br/>hotel-config-manager]
+    end
+
+    subgraph Storage [データ]
+        DDB[(DynamoDB<br/>hotel-configuration)]
+        S3[ S3 Bucket<br/>published-config]
+    end
+
+    User -- 1.認証 --> Cognito
+    User -- 2.リクエスト --> APIGW
+    APIGW -- 3.起動 --> Lambda
+    Lambda -- 4.データ保存 --> DDB
+    Lambda -- 5.静的ファイル出力 --> S3
+
+    %% スタイルの指定（任意）
+    style Auth_and_Inbound fill:#f9f,stroke:#333,stroke-width:2px
+    style Storage fill:#bbf,stroke:#333,stroke-width:2px
+```
 
 参照元資料
 <img width="1308" height="731" alt="image" src="https://github.com/user-attachments/assets/5aa38bbf-9315-4d10-a061-5b69bc3c4986" />
