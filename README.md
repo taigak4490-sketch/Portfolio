@@ -4,9 +4,36 @@ AWS SAA（Solution Architect Associate）の知識を活かし、Terraformを用
 
 システム構成図
 
-(※構成図を作成したらここに差し込む)
+```mermaid
+graph LR
+    User(( ユーザー))
+    
+    subgraph Auth_and_Inbound [認証・入口]
+        Cognito[ Amazon Cognito]
+        APIGW[ API Gateway<br/>/config]
+    end
 
-参照元資料
+    subgraph Compute [ロジック]
+        Lambda[AWS Lambda<br/>hotel-config-manager]
+    end
+
+    subgraph Storage [データ]
+        DDB[(DynamoDB<br/>hotel-configuration)]
+        S3[ S3 Bucket<br/>published-config]
+    end
+
+    User -- 1.認証 --> Cognito
+    User -- 2.リクエスト --> APIGW
+    APIGW -- 3.起動 --> Lambda
+    Lambda -- 4.データ保存 --> DDB
+    Lambda -- 5.静的ファイル出力 --> S3
+
+    %% スタイルの指定（任意）
+    style Auth_and_Inbound fill:#f9f,stroke:#333,stroke-width:2px
+    style Storage fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+参照元資料（画像左の1.configurationを基に作成しました。）
 <img width="1308" height="731" alt="image" src="https://github.com/user-attachments/assets/5aa38bbf-9315-4d10-a061-5b69bc3c4986" />
 URL：https://d1.awsstatic.com/architecture-diagrams/ArchitectureDiagrams/serverless-reservation-system-on-aws-ra.pdf
 
