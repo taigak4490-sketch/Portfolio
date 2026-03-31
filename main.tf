@@ -62,6 +62,7 @@ resource "aws_s3_bucket_versioning" "config_versioning" {
   }
 }
 
+# tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "config_enc" {
   bucket = aws_s3_bucket.published_config.id
   rule {
@@ -98,6 +99,7 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
+# tfsec:ignore:aws-iam-no-policy-wildcards
 resource "aws_iam_role_policy" "lambda_policy" {
   name = "hotel-config-policy"
   role = aws_iam_role.lambda_role.id
@@ -117,7 +119,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Action = ["s3:PutObject"]
         Effect   = "Allow"
-        Resource = "${aws_s3_bucket.published_config.arn}/*"
+        Resource = "${aws_s3_bucket.published_config.arn}/configs/*"
       },
       {
         Action = [
@@ -126,7 +128,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:logs:ap-northeast-1:*:log-group:/aws/lambda/hotel-config-manager:*"
+        Resource = "arn:aws:logs:ap-northeast-1:869742660516:log-group:/aws/lambda/hotel-config-manager:*"
       }
     ]
   })

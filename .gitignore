@@ -2,5 +2,7 @@
 *.tfstate
 *.tfstate.backup
 terraform.exe
+tfsec.exe
 .terraform.lock.hcl
-AccessKey.txt
+.txt
+.env
